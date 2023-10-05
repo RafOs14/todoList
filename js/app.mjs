@@ -2,14 +2,22 @@ import { saveT, getT, deleteT, getOne, updateTarea } from "./firebase.mjs";
 
 let boton = document.getElementById("btn");
 const tbody = document.getElementById("tabla"); // Obtener el tbody por su ID
+const fechaInput = document.getElementById("fecha");
+
+// Inicializar Flatpickr en el input
+flatpickr(fechaInput, {
+  dateFormat: "d-m-Y"
+});
 
 /////////////////////////////////////////////////////////AGREGADO DE TAREAS/////////////////////////////////////////////////////////////////////////////////////////////
 // Agregar un evento de clic al botón de agregar tarea
 boton.addEventListener("click", function() {
   // Obtener el valor del input de tarea
   let tarea = document.getElementById("tarea").value;
+  let fechaFin = document.getElementById("fecha").value;
+
   // Obtener la fecha actual
-  const fechaActual = new Date();
+  const createdAt = new Date();
 
   // Formatear la fecha en un formato legible
   const options = {
@@ -20,7 +28,7 @@ boton.addEventListener("click", function() {
     minute: "2-digit",
     second: "2-digit"
   };
-  const fecha = fechaActual.toLocaleDateString("es-ES", options);
+  const fecha = createdAt.toLocaleDateString("es-ES", options);
 
   if (tarea === "") {
     Swal.fire({
@@ -30,7 +38,7 @@ boton.addEventListener("click", function() {
     return;
   } else {
     // Agregar la tarea a Firebase Realtime Database
-    saveT(tarea, fecha);
+    saveT(tarea, fecha, fechaFin, createdAt);
     // Muestra un SweetAlert de éxito
     Swal.fire({
       icon: "success",
@@ -38,6 +46,7 @@ boton.addEventListener("click", function() {
     });
     // Limpiar el input de tarea
     document.getElementById("tarea").value = "";
+    document.getElementById("fecha").value = "";
     cargarTareas();
   }
 });
@@ -62,6 +71,9 @@ async function cargarTareas() {
     const celdaFecha = document.createElement("td");
     celdaFecha.textContent = tarea.fecha;
 
+    const celdaFechaFin = document.createElement("td");
+    celdaFechaFin.textContent = tarea.fechaFin;
+
     // Crear una celda para los botones de editar y eliminar
     const celdaAcciones = document.createElement("td");
 
@@ -80,6 +92,7 @@ async function cargarTareas() {
     // Agregar celdas a la fila
     fila.appendChild(celdaTarea);
     fila.appendChild(celdaFecha);
+    fila.appendChild(celdaFechaFin);
     fila.appendChild(celdaAcciones);
 
     // Agregar fila al tbody
@@ -98,12 +111,8 @@ async function cargarTareas() {
 ////////////////////////////////////////////////////////FIN LISTADO DE TAREAS//////////////////////////////////////////////////////////////////////////////////////////
 
 /////////////////////////////////////////////////////////EDICION DE TAREAS/////////////////////////////////////////////////////////////////////////////////////////////
-// Funcion para editar tareas.
 // Función para editar tareas.
 async function editarTarea(tareaId) {
-  // Lógica para editar la tarea con el ID proporcionado
-  //console.log("Editar tarea con ID:", tareaId);
-
   // Obtener la tarea existente desde Firebase Firestore
   const tarea = await getOne(tareaId);
 
@@ -144,14 +153,35 @@ async function editarTarea(tareaId) {
     modalBody.className = "modal-body";
 
     // Contenido del modal
+    const modalInputTitle = document.createElement("label");
+    modalInputTitle.textContent = "Nueva Descripción de Tarea:";
+    modalInputTitle.className = "form-label";
+
     const modalInput = document.createElement("input");
     modalInput.type = "text";
     modalInput.className = "form-control";
     modalInput.id = "modalInput";
-    modalInput.placeholder = "Nueva descripción";
     modalInput.value = tarea.tarea;
 
+    const modalInputDateTitle = document.createElement("label");
+    modalInputDateTitle.textContent = "Nueva fecha de fin:";
+    modalInputDateTitle.className = "form-label mt-4";
+
+    const modalInputDate = document.createElement("input");
+    modalInputDate.type = "text";
+    modalInputDate.className = "form-control";
+    modalInputDate.id = "modalInputDate";
+    modalInputDate.value = tarea.fechaFin;
+
+    // Inicializar Flatpickr en el input
+    const flatpickrInstance = flatpickr(modalInputDate, {
+      dateFormat: "d-m-Y"
+    });
+
+    modalBody.appendChild(modalInputTitle);
     modalBody.appendChild(modalInput);
+    modalBody.appendChild(modalInputDateTitle);
+    modalBody.appendChild(modalInputDate);
 
     const modalFooter = document.createElement("div");
     modalFooter.className = "modal-footer";
@@ -187,11 +217,24 @@ async function editarTarea(tareaId) {
 
     guardarCambiosBtn.addEventListener("click", async () => {
       const nuevaDescripcion = modalInput.value;
+      const nuevaFecha = flatpickrInstance.selectedDates[0];
 
       // Verificar si se proporcionó una descripción válida
       if (nuevaDescripcion.trim() !== "") {
         // Actualizar el campo "tarea" de la tarea obtenida con la nueva descripción
         tarea.tarea = nuevaDescripcion;
+
+        // Convertir la nueva fecha a una cadena en el formato deseado
+        const nuevaFechaString = nuevaFecha
+          .toLocaleDateString("es-ES", {
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric"
+          })
+          .replace(/\//g, "-");
+
+        // Actualizar el campo "fechaFin" de la tarea con la nueva fecha como cadena
+        tarea.fechaFin = nuevaFechaString;
 
         // Actualizar la tarea en Firebase Firestore
         await updateTarea(tareaId, tarea);
