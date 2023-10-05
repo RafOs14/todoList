@@ -78,11 +78,11 @@ async function cargarTareas() {
     const celdaAcciones = document.createElement("td");
 
     const botonEditar = document.createElement("button");
-    botonEditar.textContent = "Editar";
+    botonEditar.innerHTML = `<i class="fa-solid fa-pen-to-square fa-shake" style="color: #ffffff;" />`;
     botonEditar.className = "btn btn-warning me-2";
 
     const botonEliminar = document.createElement("button");
-    botonEliminar.textContent = "Eliminar";
+    botonEliminar.innerHTML = `<i class="fa-solid fa-trash-can fa-shake" style="color: #ffffff;"></i>`;
     botonEliminar.className = "btn btn-danger";
 
     // Agregar botones a la celda de acciones
